@@ -1,5 +1,4 @@
 var express = require('express');
-var cors = require('cors');
 var mongoose = require('mongoose');
 var bodyParser = require('body-parser');
 var User = require('./models/user');
@@ -11,18 +10,10 @@ mongoose.connect('mongodb://localhost:27017/reduce-link')
 
 var app = express();
 
-app.use(cors());
+
 app.use(bodyParser.urlencoded({ extended: false}));
 app.use(bodyParser.json());
 
-//app.use('Access-Control-Allow-Origin':'*');
-//app.use("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-
-/*app.use(function(req, res, next) {
-    res.header("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-    next();
-});*/
 
 function str_rand(){
     var text = "";
@@ -34,23 +25,21 @@ function str_rand(){
     return text;
 }
 
-//var activeUser = 'Zhenya';
-var activeUser = 'test';
-//var activeUser = '';
 
+var activeUser = '';
 
 app.post('/', function(req, res){
-  console.log("user " + req.body.name + '\n');
-  console.log("pass " + req.body.password + '\n');
   User.findOne({ name: req.body.name }, function(err, user){
     if(user){
       if(user.password == req.body.password){
+          //res.send("Верный пароль");
           activeUser = req.body.name;
-          console.log('/ ' + activeUser);
-          res.status(200).json({password: true});
+          console.log(activeUser);
+          res.redirect('http://localhost:3001/app.html');
+
       } else{
-          res.status(200).json({password: false});
-          //res.send("Неверный пароль");
+          res.send("Неверный пароль");
+
       }
     } else {
       User.create({ name: req.body.name, password: req.body.password }, function(err, user) {
@@ -58,7 +47,7 @@ app.post('/', function(req, res){
           console.log(err);
         } else {
           activeUser = req.body.name;
-          res.status(200).json({password: true});
+          res.redirect('http://localhost:3001/app.html');
         }
       })
     }
@@ -81,46 +70,11 @@ app.get('/', function(req, res){
   //res.send('Hello in browser')
 })
 
-app.post('/user-info', function(req, res){
-  var goLinks = 0;
-  User.findOne({ name: activeUser }).populate('links').exec(function(err, user){
-    if(err){
-      console.log(err);
-    } else {
-      user.links.map(function(link){
-        goLinks += link.click;
-      })
-      res.status(200).json({user: activeUser, amountLinks: user.links.length, goLinks: goLinks})
-    }
-  })
-})
-
-app.get('/all-links', function(req, res){
-  User.findOne({ name: activeUser }).populate('links').exec(function(err, user){
-    if(err){
-      console.log(err);
-    } else {
-      res.send(user.links);
-    }
-  })
-})
-
-app.post('/all-links', function(req, res){
-  User.findOne({ name: activeUser }).populate('links').exec(function(err, user){
-    if(err){
-      console.log(err);
-    } else {
-      res.status(200).json({allLinks: user.links})
-    }
-  })
-})
-
 app.post('/link', function(req, res){
   Link.findOne({ src: req.body.src }, function(err, link){
     if(link){
-      //res.end('Ссылка существует');
-      res.status(200).json({reduceLink: 'http://localhost:3000/' + link.reduceLink + '/'})
-      //res.end.reduceLink = 'http://localhost:3000/';
+      res.send('Ссылка существует');
+      res.send(link);
     } else {
       //var reduce_link = 'http://localhost:3000/' + str_rand() + '/';
       var reduce_link = str_rand();
@@ -138,11 +92,11 @@ app.post('/link', function(req, res){
           var link = new Link({
               src: req.body.src,
               reduceLink: reduce_link,
-              linkInfo: req.body.linkInfo,
+              linkInfo: req.body.info,
               tags: tags
           })
 
-          user.links.push(link);
+          user.link.push(link);
 
           user.save(function(err) {
               if(err){
@@ -152,8 +106,7 @@ app.post('/link', function(req, res){
                   console.log(err);
                 }else {
                   console.log('Add link');
-                  res.status(200).json({reduceLink: 'http://localhost:3000/' + link.reduceLink + '/'})
-                  //res.status(200).json(link);
+                  res.send(link);
                 }
               })
             })
@@ -169,7 +122,6 @@ app.get('/link', function(req, res){
       console.log(err);
     } else {
       links.map(function(link){
-        res.write(link.id + '\n')
         res.write(link.src + '\n');
         res.write(link.reduceLink + '\n');
         res.write(link.linkInfo + '\n');
@@ -189,13 +141,12 @@ app.put('/link', function(req, res) {
   })
   Link.update(
     { src: req.body.src },
-    { $set: {linkInfo: req.body.linkInfo, tags: tags }
+    { $set: {linkInfo: req.body.info, tags: tags }
     }, function(err, link) {
     if(err) {
       console.log(err);
     } else {
-      res.status(200).json({result: 'true'})
-      //res.send(link);
+      res.send(link);
     }
   })
 })
@@ -205,7 +156,6 @@ app.post('/tag', function(req, res){
     if(err){
       console.log(err);
     } else {
-      res.send(links);
       links.map(function(link){
         res.write(link.src + '\n');
         res.write(link.reduceLink + '\n');
@@ -225,17 +175,15 @@ app.get('/:reduceLink', function(req, res) {
       console.log(err);
     } else if(link){
       link.click++;
-      //res.writeHead(301, { Location: link.src });  //Можно использовать res.redirect()
-      res.redirect(link.src);
+      res.writeHead(301, { Location: link.src });  //Можно использовать res.redirect()
       //res.end();
 
       link.save(function(err) {
         if(err){
-          res.send(err);
+          res.rend(err);
         } else {
-          //res.end();
+          res.end();
           //res.send('updated');
-          console.log('updated click!')
         }
       })
 
