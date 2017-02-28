@@ -35,13 +35,13 @@ function str_rand(){
 }
 
 //var activeUser = 'Zhenya';
-var activeUser = 'test';
-//var activeUser = '';
+//var activeUser = 'test';
+var activeUser = '';
 
 
 app.post('/', function(req, res){
-  console.log("user " + req.body.name + '\n');
-  console.log("pass " + req.body.password + '\n');
+  console.log("User " + req.body.name + '\n');
+  //console.log("pass " + req.body.password + '\n');
   User.findOne({ name: req.body.name }, function(err, user){
     if(user){
       if(user.password == req.body.password){
@@ -80,7 +80,7 @@ app.get('/', function(req, res){
 })
 
 app.post('/all-links-users', function(req, res){
-  console.log('+');
+  console.log('all-links-users');
   Link.find({}, function(err, links) {
     if(err){
       console.log(err);
@@ -92,17 +92,22 @@ app.post('/all-links-users', function(req, res){
 })
 
 app.post('/user-info', function(req, res){
-  var goLinks = 0;
-  User.findOne({ name: activeUser }).populate('links').exec(function(err, user){
-    if(err){
-      console.log(err);
-    } else {
-      user.links.map(function(link){
-        goLinks += link.click;
-      })
-      res.status(200).json({user: activeUser, amountLinks: user.links.length, goLinks: goLinks})
-    }
-  })
+  if(activeUser !== ''){
+    var goLinks = 0;
+    User.findOne({ name: activeUser }).populate('links').exec(function(err, user){
+      if(err){
+        console.log(err);
+      } else {
+        user.links.map(function(link){
+          goLinks += link.click;
+        })
+        console.log('user-info');
+        res.status(200).json({user: activeUser, amountLinks: user.links.length, goLinks: goLinks})
+      }
+    })
+  } else {
+    res.status(200).json({user: activeUser});
+  }
 })
 
 app.get('/all-links', function(req, res){
@@ -120,6 +125,7 @@ app.post('/all-links', function(req, res){
     if(err){
       console.log(err);
     } else {
+      console.log('all user links');
       res.status(200).json({allLinks: user.links})
     }
   })
@@ -127,9 +133,12 @@ app.post('/all-links', function(req, res){
 
 app.post('/link', function(req, res){
   Link.findOne({ src: req.body.src }, function(err, link){
-    if(link){
-      //res.end('Ссылка существует');
-      res.status(200).json({reduceLink: 'http://localhost:3000/' + link.reduceLink + '/'})
+    // if(link){
+    //   //res.end('Ссылка существует');
+    //   res.status(200).json({reduceLink: 'http://localhost:3000/' + link.reduceLink + '/'})
+    // } else {
+    if(err){
+      console.log(err);
     } else {
       //var reduce_link = 'http://localhost:3000/' + str_rand() + '/';
       var reduce_link = str_rand();
@@ -204,8 +213,7 @@ app.put('/link', function(req, res) {
     if(err) {
       console.log(err);
     } else {
-      res.status(200).json({result: 'true'})
-      //res.send(link);
+      res.status(200).json(tags);
     }
   })
 })
@@ -231,6 +239,12 @@ app.post('/tag', function(req, res){
       res.status(200).json(links);
     }
   })
+})
+
+app.post('/exit', function(req, res){
+  activeUser = '';
+  console.log(activeUser);
+  res.status(200).json({user: activeUser});
 })
 
 app.get('/:reduceLink', function(req, res) {
